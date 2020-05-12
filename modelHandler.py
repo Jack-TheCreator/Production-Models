@@ -7,6 +7,7 @@ from keras.models import  model_from_json
 from keras.models import load_model
 import tensorflow as tf
 import orjson
+from mongoHandler import MongoHandler
 
 class ModelHandlerBase(ABC):
     def save_model(self, key:str, model, optimizer, version:int, model_type:str):
@@ -24,6 +25,7 @@ class ModelHandlerBase(ABC):
 class ModelHandler(ModelHandlerBase):
     def __init__(self, redisConnection):
         self.redis = redisConnection
+        self.mongo = MongoHandler()
 
     def save_model(self, key:str, model, optimizer, epoch, version:int, model_type:str=''):
         modelDict = self.dictify(model, optimizer, epoch, model_type)
@@ -31,9 +33,15 @@ class ModelHandler(ModelHandlerBase):
         scored = {pickled: version}
         try:
             self.redis.zadd(key, scored)
+        except:
+            raise CustomExceptions.saveError("Error Saving Model to Redis")
+        try:
+            self.mongo.save_model(key, pickled, version)
             return True
         except:
-            raise CustomExceptions.saveError("Error Saving Model")
+            raise CustomExceptions.saveError("Error Saving Model to Mongo")
+
+
 
     def dictify(self, model, optimizer, epoch, model_type:str) -> dict:
         modelDict = {
