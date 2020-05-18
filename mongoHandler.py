@@ -10,7 +10,7 @@ from pymongo import MongoClient
 
 class MongoHandlerBase(ABC):
 
-    def save_model(self, key:str, model, optimizer, epoch, version:int, model_type:str=''):
+    def save_model(self, key:str, modelDict, version:int):
         raise NotImplementedError
 
 

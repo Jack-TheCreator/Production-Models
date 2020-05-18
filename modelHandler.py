@@ -8,12 +8,13 @@ from keras.models import load_model
 import tensorflow as tf
 import orjson
 from mongoHandler import MongoHandler
+import pymongo
 
 class ModelHandlerBase(ABC):
-    def save_model(self, key:str, model, optimizer, version:int, model_type:str):
+    def save_model(self, key:str, model, optimizer, version:int, features:dict):
         raise NotImplementedError
 
-    def dictify(self, model, optimizer, model_type:str) -> dict:
+    def dictify(self, model, optimizer, features:dict) -> dict:
         raise NotImplementedError
 
     def load_latest_model(self, key:str):
@@ -27,8 +28,8 @@ class ModelHandler(ModelHandlerBase):
         self.redis = redisConnection
         self.mongo = MongoHandler()
 
-    def save_model(self, key:str, model, optimizer, epoch, version:int, model_type:str=''):
-        modelDict = self.dictify(model, optimizer, epoch, model_type)
+    def save_model(self, key:str, model, optimizer, version:int, features:dict=None):
+        modelDict = self.dictify(model, optimizer, features)
         pickled = pickle.dumps(modelDict)
         scored = {pickled: version}
         try:
@@ -43,23 +44,22 @@ class ModelHandler(ModelHandlerBase):
 
 
 
-    def dictify(self, model, optimizer, epoch, model_type:str) -> dict:
+    def dictify(self, model, optimizer, features) -> dict:
         modelDict = {
-            'epoch': epoch,
             'state_dict': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'model_type':model_type
+            'features':features
         }
 
         return modelDict
 
     def dedictify(self, modelDict:dict):
-        epoch = modelDict['epoch']
+        features = modelDict['features']
         model = modelDict['state_dict']
         optimizer = modelDict['optimizer']
 
 
-        return epoch, model, optimizer
+        return model, optimizer, features
 
 
     def load_latest_model(self, key:str):
